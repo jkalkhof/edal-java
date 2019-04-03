@@ -595,7 +595,7 @@ public class WmsServlet extends HttpServlet {
                 String description = layerMetadata.getDescription();
                 String zValue = plottingParameters.getTargetZ() == null ? null
                         : plottingParameters.getTargetZ().toString();
-                BufferedImage legend = imageGenerator.getLegend(50, 200, true);
+                BufferedImage legend = imageGenerator.getLegend(50, 200, true, "");
                 GeographicBoundingBox gbbox = GISUtils
                         .toGeographicBoundingBox(plottingParameters.getBbox());
                 imageFormat.writeImage(frames, outputStream, name, description, gbbox, timeValues,
@@ -1932,6 +1932,8 @@ public class WmsServlet extends HttpServlet {
             paletteName = ColourPalette.DEFAULT_PALETTE_NAME;
         }
 
+        String legendTitleOverride = params.getString("legendtitle", "");
+        
         /* Find out if we just want the colour bar with no supporting text */
         String colorBarOnly = params.getString("colorbaronly", "false");
         boolean vertical = params.getBoolean("vertical", true);
@@ -1975,6 +1977,9 @@ public class WmsServlet extends HttpServlet {
              */
             boolean isVector = false;
             if (getMapStyleParameters.getNumLayers() == 1) {
+                log.info("getLegendGraphic: "+ getMapStyleParameters.getLayerNames()[0]);
+//                System.out.println("getLegendGraphic: "+ getMapStyleParameters.getLayerNames()[0]);
+                
                 VariableMetadata metadata = WmsUtils.getVariableMetadataFromLayerName(
                         getMapStyleParameters.getLayerNames()[0], catalogue);
                 categories = metadata.getParameter().getCategories();
@@ -1998,7 +2003,9 @@ public class WmsServlet extends HttpServlet {
                 } else {
                     width = params.getPositiveInt("width", 50);
                 }
-                legend = imageGenerator.getLegend(width, height, isVector);
+                
+//                String legendTitleOverride = "wmsservlet-getLegendGraphic-override";
+                legend = imageGenerator.getLegend(width, height, isVector, legendTitleOverride);
             }
         }
         httpServletResponse.setContentType("image/png");

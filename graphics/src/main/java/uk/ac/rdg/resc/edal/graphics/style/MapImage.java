@@ -50,9 +50,14 @@ import uk.ac.rdg.resc.edal.graphics.utils.FeatureCatalogue;
 import uk.ac.rdg.resc.edal.graphics.utils.LegendDataGenerator;
 import uk.ac.rdg.resc.edal.graphics.utils.PlottingDomainParams;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MapImage extends Drawable {
     private List<Drawable> layers = new ArrayList<Drawable>();
 
+    private static final Logger log = LoggerFactory.getLogger(MapImage.class);
+    
     public List<Drawable> getLayers() {
         return layers;
     }
@@ -92,7 +97,7 @@ public class MapImage extends Drawable {
      *         {@link MapImage}
      */
     public BufferedImage getLegend(int componentSize) throws EdalException {
-        return getLegend(componentSize, componentSize, Color.black, Color.white, true, false);
+        return getLegend(componentSize, componentSize, Color.black, Color.white, true, false, "");
     }
 
     /**
@@ -107,12 +112,15 @@ public class MapImage extends Drawable {
      *            A single integer specifying the height of each component of
      *            the legend. The final image size will depend upon this number
      *            as well as the number of unique data fields which this
+     *            {@link MapImage} depends upon
+     * @param legendTitleOverride
+     *            Title override for side of legend.
      *            {@link MapImage} depends upon
      * @return An {@link BufferedImage} representing the legend for this
      *         {@link MapImage}
      */
-    public BufferedImage getLegend(int componentWidth, int componentHeight) throws EdalException {
-        return getLegend(componentWidth, componentHeight, Color.black, Color.white, true, false);
+    public BufferedImage getLegend(int componentWidth, int componentHeight, String legendTitleOverride) throws EdalException {
+        return getLegend(componentWidth, componentHeight, Color.black, Color.white, true, false, legendTitleOverride);
     }
 
     /**
@@ -127,15 +135,18 @@ public class MapImage extends Drawable {
      *            A single integer specifying the height of each component of
      *            the legend. The final image size will depend upon this number
      *            as well as the number of unique data fields which this
+     *            {@link MapImage} depends upon
+     * @param legendTitleOverride
+     *            Title override for side of legend.
      *            {@link MapImage} depends upon
      * @param force1D
      *            Force this legend to only use the first field.
      * @return An {@link BufferedImage} representing the legend for this
      *         {@link MapImage}
      */
-    public BufferedImage getLegend(int componentWidth, int componentHeight, boolean force1D)
+    public BufferedImage getLegend(int componentWidth, int componentHeight, boolean force1D, String legendTitleOverride)
             throws EdalException {
-        return getLegend(componentWidth, componentHeight, Color.black, Color.white, true, force1D);
+        return getLegend(componentWidth, componentHeight, Color.black, Color.white, true, force1D, legendTitleOverride);
     }
 
     /**
@@ -159,13 +170,16 @@ public class MapImage extends Drawable {
      *            Whether or not to plot the ID of the layers on the legend
      * @param force1D
      *            Force this legend to only use the first field.
+     * @param legendTitleOverride
+     *            Title override for side of legend.
+     *            {@link MapImage} depends upon
      * @return An {@link BufferedImage} representing the legend for this
      *         {@link MapImage}
      */
     public BufferedImage getLegend(int componentWidth, int componentHeight, Color textColour,
-            Color bgColour, boolean layerNameLabels, boolean force1D) throws EdalException {
+            Color bgColour, boolean layerNameLabels, boolean force1D, String legendTitleOverride) throws EdalException {
         return getLegend(componentWidth, componentHeight, textColour, bgColour, layerNameLabels,
-                true, force1D, 0.1f, 0.05f);
+                true, force1D, 0.1f, 0.05f, legendTitleOverride);
     }
 
     /**
@@ -207,9 +221,9 @@ public class MapImage extends Drawable {
      */
     public BufferedImage getLegend(int componentWidth, int componentHeight, Color textColour,
             Color bgColour, boolean layerNameLabels, boolean background, boolean force1D,
-            float extraAmountOutOfRange, float fontProportion) throws EdalException {
+            float extraAmountOutOfRange, float fontProportion, String legendTitleOverride) throws EdalException {
         return getLegend(componentWidth, componentHeight, textColour, bgColour, layerNameLabels,
-                background, force1D, extraAmountOutOfRange, extraAmountOutOfRange, fontProportion);
+                background, force1D, extraAmountOutOfRange, extraAmountOutOfRange, fontProportion, legendTitleOverride);
     }
 
     /**
@@ -257,7 +271,8 @@ public class MapImage extends Drawable {
      */
     public BufferedImage getLegend(int componentWidth, int componentHeight, Color textColour,
             Color bgColour, boolean layerNameLabels, boolean background, boolean force1D,
-            float extraAmountOutOfRangeLow, float extraAmountOutOfRangeHigh, float fontProportion)
+            float extraAmountOutOfRangeLow, float extraAmountOutOfRangeHigh, float fontProportion,
+            String legendTitleOverride)
             throws EdalException {
         BufferedImage finalImage;
 
@@ -283,7 +298,12 @@ public class MapImage extends Drawable {
              * Get the field name and scale range.
              */
             NameAndRange nameAndRange = fieldsWithScales.iterator().next();
+//            NameAndRange nameAndRangeOriginal = fieldsWithScales.iterator().next();
 
+          
+
+            log.info("getLegend: nameAndRange: " + nameAndRange.getFieldLabel());
+                    
             /*
              * Get the data for the colourbar and draw it.
              */
@@ -301,9 +321,20 @@ public class MapImage extends Drawable {
             /*
              * Now generate the labels for this legend
              */
-            BufferedImage labels = getLegendLabels(nameAndRange, extraAmountOutOfRangeLow,
+            NameAndRange nameAndRangeOverride;
+            if ((legendTitleOverride != null) && (legendTitleOverride.length() > 0)) {
+                nameAndRangeOverride = new NameAndRange(legendTitleOverride,
+                    nameAndRange.getScaleRange(), 
+                    nameAndRange.getDefinedPoints());
+            } else {
+                nameAndRangeOverride = new NameAndRange(nameAndRange.getFieldLabel(),
+                    nameAndRange.getScaleRange(), 
+                    nameAndRange.getDefinedPoints());               
+            }
+            
+            BufferedImage labels = getLegendLabels(nameAndRangeOverride, extraAmountOutOfRangeLow,
                     extraAmountOutOfRangeHigh, componentHeight, textColour, layerNameLabels,
-                    fontSize);
+                    fontSize);                 
 
             /*
              * Now create the correctly-sized final image...
@@ -429,6 +460,8 @@ public class MapImage extends Drawable {
             Color textColor, boolean layerNameLabels, int fontHeight) {
         String fieldName = nameAndRange.getFieldLabel();
 
+        log.info("getLegendLabels: fieldName:" + fieldName);
+                
         List<Float> definedPoints = nameAndRange.getDefinedPoints();
         if (definedPoints != null) {
             /*
@@ -462,6 +495,9 @@ public class MapImage extends Drawable {
     private static BufferedImage drawLegendLabels(List<Float> values, String fieldName,
             float extraAmountOutOfRangeLow, float extraAmountOutOfRangeHigh, int componentSize,
             Color textColor, boolean layerNameLabels, int fontHeight) {
+        
+        log.info("drawLegendLabels: filedName: " + fieldName);
+        
         Collections.sort(values);
         float[] vals = new float[values.size()];
         for (int i = 0; i < vals.length; i++) {

@@ -59,6 +59,9 @@ import uk.ac.rdg.resc.edal.wms.exceptions.EdalUnsupportedOperationException;
 import uk.ac.rdg.resc.edal.wms.exceptions.StyleNotSupportedException;
 import uk.ac.rdg.resc.edal.wms.util.WmsUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class GetMapStyleParams {
 
     private String[] layers;
@@ -80,6 +83,8 @@ public class GetMapStyleParams {
     /* true if we are using an XML style specification */
     private MapImage xmlMapImage = null;
 
+    private static final Logger log = LoggerFactory.getLogger(GetMapStyleParams.class);
+    
     /**
      * Extract GetMap parameters from the URL, using a {@link WmsCatalogue} to
      * determine default values.
@@ -305,6 +310,8 @@ public class GetMapStyleParams {
      *             issues with generating a {@link MapImage} object
      */
     public MapImage getImageGenerator(WmsCatalogue catalogue) throws EdalException {
+        log.info("GetMapStyleParams: getImageGenerator");
+        
         if (xmlMapImage != null) {
             try {
                 return xmlMapImage;
@@ -319,6 +326,8 @@ public class GetMapStyleParams {
         }
 
         String layerName = layers[0];
+        log.info("GetMapStyleParams: getImageGenerator: layerName: " + layerName);
+        
         EnhancedVariableMetadata layerMetadata = WmsUtils.getLayerMetadata(layerName, catalogue);
         if (catalogue.isDisabled(layerName)) {
             throw new EdalLayerNotFoundException(
